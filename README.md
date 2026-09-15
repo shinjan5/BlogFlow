@@ -9,12 +9,23 @@ BlogFlow runs two variants of the same underlying pipeline, compiled as separate
 - **`full`** — fully autonomous, no human checkpoints. Planner → validate → (retry up to 3x) → Writer → validate → (retry up to 3x) → Extras → done. Used by `POST /generate`.
 - **`review`** — the same pipeline, but pauses (via LangGraph `interrupt`) after the outline and after the draft for human approval or feedback, resuming exactly where it left off using a Postgres-backed checkpointer. Used by the `/outline/*` and `/blog/feedback` endpoints.
 
+```mermaid
+flowchart LR
+    Start([Start]) --> Planner
+    Planner --> OutlineValidator{Outline Validator}
+    OutlineValidator -->|retry| Planner
+    OutlineValidator -->|ok| OutlineReview{{Outline Review}}
+    OutlineReview -->|approved| Writer
+    OutlineReview -->|rejected| Planner
+    Writer --> BlogValidator{Blog Validator}
+    BlogValidator -->|retry| Writer
+    BlogValidator -->|ok| BlogReview{{Blog Review}}
+    BlogReview -->|approved| Extras
+    BlogReview -->|rejected| Writer
+    Extras --> End([End])
 ```
-Planner ──▶ Outline Validator ──▶ [Outline Review] ──▶ Writer ──▶ Blog Validator ──▶ [Blog Review] ──▶ Extras
-   ▲               │                      │              ▲             │                   │
-   └── retry ───────┘                     └── rejected ───┘             └── retry ───────────┘
-                                                                          rejected ──────────┘
-```
+
+*(This is the `review` graph, used by the `/outline/*` and `/blog/feedback` endpoints. The `full` graph used by `/generate` skips the two review checkpoints and retries automatically instead.)*
 
 Each LLM node accumulates token usage and (when available) cost, tracked per-node and totalled across the whole run.
 
