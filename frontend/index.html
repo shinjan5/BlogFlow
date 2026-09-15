@@ -529,7 +529,7 @@
 </div>
 
 <script>
-  const API_BASE = "http://127.0.0.1:8000";
+  const API_BASE = "https://blogflow-api.onrender.com";
   const OUTLINE_START_URL = API_BASE + "/outline/start";
   const OUTLINE_FEEDBACK_URL = API_BASE + "/outline/feedback";
   const BLOG_FEEDBACK_URL = API_BASE + "/blog/feedback";
@@ -583,7 +583,7 @@
   const outlineStream = { buffer: "", el: outlineContent };
   const draftStream = { buffer: "", el: draftContent };
 
-  // --- Token spent calculator -------------------------------------------
+
 
   let sessionUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0, cost_usd: 0 };
 
