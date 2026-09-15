@@ -1,6 +1,6 @@
 # BlogFlow
 
-A multi-agent technical blog generation system built with **LangGraph** and **FastAPI**. A planner agent drafts an outline, a writer agent expands it into a full article, and a validator agent checks structure at each stage — with an optional human-in-the-loop review step before anything gets finalized.
+A multi-agent technical blog generation system built with **LangGraph** and **FastAPI**. A planner agent drafts an outline, a writer agent expands it into a full article, and a validator agent checks structure at each stage — with a two phase human-in-the-loop review step before anything gets finalized.
 
 ## How it works
 
