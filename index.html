@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2e38;
+    --text: #e7e9ee;
+    --muted: #9aa1ad;
+    --accent: #7c9eff;
+    --accent-dark: #5b7be0;
+    --error: #ff6b6b;
+    --good: #5fd694;
+    --good-dark: #43b578;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar h2 {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 4px 8px 14px;
+  }
+
+  .new-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .new-btn:hover { border-color: var(--accent); }
+
+  .history-list {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .history-item {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    text-align: left;
+    padding: 10px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+  }
+
+  .history-item:hover { background: #1f232c; }
+
+  .history-item.active {
+    background: #232838;
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  .history-item .topic {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .history-item .date {
+    display: block;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  .history-item .usage-badge {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-top: 3px;
+    opacity: 0.85;
+  }
+
+  .history-empty {
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 10px;
+  }
+
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding: 12px 10px 2px;
+  }
+
+  .sidebar-footer .label {
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-footer .value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .sidebar-footer .value .cost {
+    color: var(--good);
+    font-weight: 600;
+  }
+
+  .usage-panel {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 14px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .usage-panel .usage-icon {
+    font-size: 1rem;
+  }
+
+  .usage-panel strong {
+    color: var(--text);
+  }
+
+  .usage-panel .usage-cost {
+    color: var(--good);
+    font-weight: 600;
+  }
+
+  .usage-panel .usage-sep {
+    color: var(--border);
+  }
+
+  .usage-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .usage-summary strong {
+    color: var(--text);
+  }
+
+  .usage-summary .usage-cost {
+    color: var(--good);
+    font-weight: 600;
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px 80px;
+  }
+
+  .wrap {
+    max-width: 780px;
+    width: 100%;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  header h1 {
+    font-size: 1.9rem;
+    margin: 0 0 8px;
+  }
+
+  header p {
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .input-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 10px 12px;
+  }
+
+  .input-row input::placeholder { color: var(--muted); }
+
+  .primary-btn {
+    background: var(--accent);
+    color: #0b0d12;
+    border: none;
+    border-radius: 8px;
+    padding: 0 22px;
+    height: 44px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .primary-btn:hover:not(:disabled) { background: var(--accent-dark); }
+
+  .primary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .status {
+    text-align: center;
+    color: var(--muted);
+    margin-top: 20px;
+    font-size: 0.95rem;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    margin-top: 20px;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin-bottom: 20px;
+  }
+
+  .card h2.section-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+
+  .prose h1 { font-size: 1.7rem; margin-top: 0; }
+  .prose h2 { font-size: 1.3rem; margin-top: 1.6em; }
+  .prose h3 { font-size: 1.1rem; margin-top: 1.3em; }
+  .prose p, .prose li { color: #d4d7de; }
+  .prose code {
+    background: #10131a;
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 0.9em;
+  }
+  .prose pre {
+    background: #10131a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+  .prose pre code { border: none; padding: 0; background: none; }
+  .prose ul, .prose ol { padding-left: 1.3em; }
+  .prose blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 1em 0;
+    padding-left: 14px;
+    color: var(--muted);
+  }
+
+  #outlineSection, #draftSection { display: none; margin-top: 36px; }
+
+  .review-question {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 18px;
+  }
+
+  .review-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .btn-good {
+    background: var(--good);
+    color: #0b0d12;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-good:hover:not(:disabled) { background: var(--good-dark); }
+
+  .btn-reject {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-reject:hover:not(:disabled) { border-color: var(--error); color: var(--error); }
+
+  .review-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .feedback-box { display: none; margin-top: 18px; }
+
+  .feedback-box textarea {
+    width: 100%;
+    min-height: 90px;
+    background: #10131a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+  }
+
+  .feedback-box textarea:focus { outline: 1px solid var(--accent); }
+
+  .feedback-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .attempts-note {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 14px;
+  }
+
+  #resultSection { display: none; margin-top: 36px; }
+
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h2>History</h2>
+    <button class="new-btn" id="newBtn">+ New generation</button>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No past generations yet.</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="label">All-time tokens spent</div>
+      <div class="value" id="allTimeUsage">0 tokens · <span class="cost">$0.0000</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="wrap">
+      <header>
+        <h1>Technical Blog Generator</h1>
+        <p>Enter a topic — you'll review the outline, then the draft, before the article is finalized.</p>
+      </header>
+
+      <div class="input-row">
+        <input id="topic" type="text" placeholder="e.g. Kubernetes for beginners" />
+        <button class="primary-btn" id="startBtn">Generate outline</button>
+      </div>
+
+      <div id="status" class="status" style="display:none;"></div>
+      <div id="errorBox" class="error-box" style="display:none;"></div>
+
+      <div id="usagePanel" class="usage-panel">
+        <span class="usage-icon">🧮</span>
+        <span>Tokens spent this generation: <strong id="usageTokens">0</strong></span>
+        <span class="usage-sep">·</span>
+        <span>in <strong id="usageInputTokens">0</strong> / out <strong id="usageOutputTokens">0</strong></span>
+        <span class="usage-sep">·</span>
+        <span class="usage-cost" id="usageCost">$0.0000</span>
+      </div>
+
+      <div id="outlineSection">
+        <div class="card">
+          <h2 class="section-label">Outline</h2>
+          <div id="outlineContent" class="prose"></div>
+
+          <p class="review-question">Do you like this outline?</p>
+          <div class="review-actions">
+            <button class="btn-good" id="approveBtn">✓ Yes, write the full post</button>
+            <button class="btn-reject" id="rejectBtn">✗ No, needs changes</button>
+          </div>
+
+          <div class="feedback-box" id="feedbackBox">
+            <textarea id="feedbackText" placeholder="What would you like changed? e.g. 'Add a section on networking' or 'Make the tone more beginner-friendly'"></textarea>
+            <div class="feedback-actions">
+              <button class="primary-btn" id="submitFeedbackBtn">Regenerate outline</button>
+            </div>
+          </div>
+
+          <p class="attempts-note" id="attemptsNote"></p>
+        </div>
+      </div>
+
+      <div id="draftSection">
+        <div class="card">
+          <h2 class="section-label">Draft</h2>
+          <div id="draftContent" class="prose"></div>
+
+          <p class="review-question">Do you like this draft?</p>
+          <div class="review-actions">
+            <button class="btn-good" id="approveDraftBtn">✓ Yes, finalize it</button>
+            <button class="btn-reject" id="rejectDraftBtn">✗ No, needs changes</button>
+          </div>
+
+          <div class="feedback-box" id="draftFeedbackBox">
+            <textarea id="draftFeedbackText" placeholder="What would you like changed? e.g. 'Expand the security section' or 'Simplify the code examples'"></textarea>
+            <div class="feedback-actions">
+              <button class="primary-btn" id="submitDraftFeedbackBtn">Rewrite draft</button>
+            </div>
+          </div>
+
+          <p class="attempts-note" id="draftAttemptsNote"></p>
+        </div>
+      </div>
+
+      <div id="resultSection">
+        <div class="card">
+          <h2 class="section-label">Blog Post</h2>
+          <div id="blogContent" class="prose"></div>
+        </div>
+        <div class="card">
+          <h2 class="section-label">Titles &amp; Social Hooks</h2>
+          <div id="extrasContent" class="prose"></div>
+
+          <div class="usage-summary">
+            <span>🧮 Total tokens: <strong id="finalUsageTokens">0</strong></span>
+            <span>Input: <strong id="finalUsageInput">0</strong></span>
+            <span>Output: <strong id="finalUsageOutput">0</strong></span>
+            <span>Est. cost: <span class="usage-cost" id="finalUsageCost">$0.0000</span></span>
+          </div>
+        </div>
+      </div>
+
+      <footer>Powered by a LangGraph multi-agent pipeline</footer>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const API_BASE = "http://127.0.0.1:8000";
+  const OUTLINE_START_URL = API_BASE + "/outline/start";
+  const OUTLINE_FEEDBACK_URL = API_BASE + "/outline/feedback";
+  const BLOG_FEEDBACK_URL = API_BASE + "/blog/feedback";
+  const HISTORY_URL = API_BASE + "/history";
+
+  const topicInput = document.getElementById("topic");
+  const startBtn = document.getElementById("startBtn");
+  const newBtn = document.getElementById("newBtn");
+  const statusEl = document.getElementById("status");
+  const errorBox = document.getElementById("errorBox");
+
+  const outlineSection = document.getElementById("outlineSection");
+  const outlineContent = document.getElementById("outlineContent");
+  const approveBtn = document.getElementById("approveBtn");
+  const rejectBtn = document.getElementById("rejectBtn");
+  const feedbackBox = document.getElementById("feedbackBox");
+  const feedbackText = document.getElementById("feedbackText");
+  const submitFeedbackBtn = document.getElementById("submitFeedbackBtn");
+  const attemptsNote = document.getElementById("attemptsNote");
+
+  const draftSection = document.getElementById("draftSection");
+  const draftContent = document.getElementById("draftContent");
+  const approveDraftBtn = document.getElementById("approveDraftBtn");
+  const rejectDraftBtn = document.getElementById("rejectDraftBtn");
+  const draftFeedbackBox = document.getElementById("draftFeedbackBox");
+  const draftFeedbackText = document.getElementById("draftFeedbackText");
+  const submitDraftFeedbackBtn = document.getElementById("submitDraftFeedbackBtn");
+  const draftAttemptsNote = document.getElementById("draftAttemptsNote");
+
+  const resultSection = document.getElementById("resultSection");
+  const blogContent = document.getElementById("blogContent");
+  const extrasContent = document.getElementById("extrasContent");
+
+  const historyList = document.getElementById("historyList");
+  const allTimeUsage = document.getElementById("allTimeUsage");
+
+  const usagePanel = document.getElementById("usagePanel");
+  const usageTokens = document.getElementById("usageTokens");
+  const usageInputTokens = document.getElementById("usageInputTokens");
+  const usageOutputTokens = document.getElementById("usageOutputTokens");
+  const usageCost = document.getElementById("usageCost");
+
+  const finalUsageTokens = document.getElementById("finalUsageTokens");
+  const finalUsageInput = document.getElementById("finalUsageInput");
+  const finalUsageOutput = document.getElementById("finalUsageOutput");
+  const finalUsageCost = document.getElementById("finalUsageCost");
+
+  let currentSessionId = null;
+  let activeHistoryId = null;
+  const nodeCompleted = {};
+  const outlineStream = { buffer: "", el: outlineContent };
+  const draftStream = { buffer: "", el: draftContent };
+
+  // --- Token spent calculator -------------------------------------------
+
+  let sessionUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0, cost_usd: 0 };
+
+  function formatTokens(n) {
+    return (n || 0).toLocaleString();
+  }
+
+  function formatCost(n) {
+    return "$" + (n || 0).toFixed(4);
+  }
+
+  function resetSessionUsage() {
+    sessionUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0, cost_usd: 0 };
+    usagePanel.style.display = "none";
+    usageTokens.textContent = "0";
+    usageInputTokens.textContent = "0";
+    usageOutputTokens.textContent = "0";
+    usageCost.textContent = formatCost(0);
+  }
+
+  function onUsageEvent(data) {
+    // The backend sends the running cumulative total (not a delta) each
+    // time a node finishes, so we can just render it directly.
+    sessionUsage = {
+      input_tokens: data.input_tokens || 0,
+      output_tokens: data.output_tokens || 0,
+      total_tokens: data.total_tokens || 0,
+      cost_usd: data.cost_usd || 0,
+    };
+    usagePanel.style.display = "flex";
+    usageTokens.textContent = formatTokens(sessionUsage.total_tokens);
+    usageInputTokens.textContent = formatTokens(sessionUsage.input_tokens);
+    usageOutputTokens.textContent = formatTokens(sessionUsage.output_tokens);
+    usageCost.textContent = formatCost(sessionUsage.cost_usd);
+  }
+
+  function renderFinalUsage(data) {
+    finalUsageTokens.textContent = formatTokens(data.total_tokens);
+    finalUsageInput.textContent = formatTokens(data.input_tokens);
+    finalUsageOutput.textContent = formatTokens(data.output_tokens);
+    finalUsageCost.textContent = formatCost(data.cost_usd);
+  }
+
+  function computeAllTimeUsage(items) {
+    const totals = items.reduce(
+      (acc, item) => {
+        acc.tokens += item.total_tokens || 0;
+        acc.cost += item.cost_usd || 0;
+        return acc;
+      },
+      { tokens: 0, cost: 0 }
+    );
+    allTimeUsage.innerHTML =
+      formatTokens(totals.tokens) + " tokens · <span class=\"cost\">" + formatCost(totals.cost) + "</span>";
+  }
+
+  function setBusy(isBusy, message) {
+    startBtn.disabled = isBusy;
+    topicInput.disabled = isBusy;
+    approveBtn.disabled = isBusy;
+    rejectBtn.disabled = isBusy;
+    submitFeedbackBtn.disabled = isBusy;
+    approveDraftBtn.disabled = isBusy;
+    rejectDraftBtn.disabled = isBusy;
+    submitDraftFeedbackBtn.disabled = isBusy;
+
+    statusEl.style.display = isBusy ? "block" : "none";
+    statusEl.innerHTML = isBusy
+      ? '<span class="spinner"></span>' + (message || "Working...")
+      : "";
+  }
+
+  function showError(message) {
+    errorBox.style.display = "block";
+    errorBox.textContent = message;
+  }
+
+  function clearError() {
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+  }
+
+  function friendlyNetworkError(err, url) {
+    return err.message === "Failed to fetch"
+      ? "Couldn't reach the server. Is it running at " + url + "?"
+      : err.message;
+  }
+
+  function resetPanels() {
+    outlineSection.style.display = "none";
+    draftSection.style.display = "none";
+    resultSection.style.display = "none";
+    feedbackBox.style.display = "none";
+    feedbackText.value = "";
+    attemptsNote.textContent = "";
+    draftFeedbackBox.style.display = "none";
+    draftFeedbackText.value = "";
+    draftAttemptsNote.textContent = "";
+    resetSessionUsage();
+  }
+
+  function appendToken(target, node, content) {
+    if (nodeCompleted[node]) {
+      target.buffer = "";
+      nodeCompleted[node] = false;
+    }
+    target.buffer += content;
+    target.el.innerHTML = marked.parse(target.buffer);
+  }
+
+  async function streamRequest(url, body, handlers) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => null);
+      throw new Error((errData && errData.detail) || `Request failed (${response.status})`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop();
+
+      for (const raw of events) {
+        if (!raw.trim()) continue;
+
+        let eventName = "message";
+        let dataLine = "";
+
+        for (const line of raw.split("\n")) {
+          if (line.startsWith("event:")) eventName = line.slice(6).trim();
+          if (line.startsWith("data:")) dataLine = line.slice(5).trim();
+        }
+
+        let data = {};
+        try {
+          data = JSON.parse(dataLine);
+        } catch (e) {
+          continue;
+        }
+
+        const handler = handlers[eventName];
+        if (handler) handler(data);
+      }
+    }
+  }
+
+  function onOutlineReview(data) {
+    currentSessionId = data.session_id;
+    outlineContent.innerHTML = marked.parse(data.outline || "");
+    attemptsNote.textContent = "Attempt " + data.attempts + " of 3 automatic structure checks.";
+    outlineSection.style.display = "block";
+    approveBtn.style.display = "";
+    rejectBtn.style.display = "";
+    feedbackBox.style.display = "none";
+    feedbackText.value = "";
+    outlineSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function onBlogReview(data) {
+    currentSessionId = data.session_id;
+    draftContent.innerHTML = marked.parse(data.blog_post || "");
+    draftAttemptsNote.textContent = "Attempt " + data.attempts + " of 3 automatic technical checks.";
+    outlineSection.style.display = "none";
+    draftSection.style.display = "block";
+    approveDraftBtn.style.display = "";
+    rejectDraftBtn.style.display = "";
+    draftFeedbackBox.style.display = "none";
+    draftFeedbackText.value = "";
+    draftSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function onComplete(data) {
+    currentSessionId = null;
+    draftSection.style.display = "none";
+    activeHistoryId = data.id;
+    renderPost(data.blog_post, data.extras);
+    renderFinalUsage(data);
+    loadHistory();
+  }
+
+  async function startOutline() {
+    const topic = topicInput.value.trim();
+    if (!topic) {
+      showError("Please enter a topic first.");
+      return;
+    }
+
+    clearError();
+    resetPanels();
+    setBusy(true, "Drafting an outline...");
+
+    outlineStream.buffer = "";
+    nodeCompleted.planner = false;
+
+    outlineSection.style.display = "block";
+    outlineContent.innerHTML = "";
+    approveBtn.style.display = "none";
+    rejectBtn.style.display = "none";
+
+    try {
+      await streamRequest(OUTLINE_START_URL, { topic }, {
+        token: (data) => {
+          if (data.node === "planner") appendToken(outlineStream, "planner", data.content);
+        },
+        node_complete: (data) => {
+          if (data.node === "planner") nodeCompleted.planner = true;
+        },
+        usage: onUsageEvent,
+        interrupt: (data) => {
+          if (data.type === "outline_review") onOutlineReview(data);
+        },
+      });
+    } catch (err) {
+      showError(friendlyNetworkError(err, OUTLINE_START_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveOutline() {
+    if (!currentSessionId) return;
+
+    clearError();
+    setBusy(true, "Writing the full article — this can take a minute or two...");
+
+    draftStream.buffer = "";
+    nodeCompleted.writer = false;
+
+    draftSection.style.display = "block";
+    draftContent.innerHTML = "";
+    approveDraftBtn.style.display = "none";
+    rejectDraftBtn.style.display = "none";
+
+    try {
+      await streamRequest(OUTLINE_FEEDBACK_URL, { session_id: currentSessionId, approved: true }, {
+        token: (data) => {
+          if (data.node === "writer") appendToken(draftStream, "writer", data.content);
+        },
+        node_complete: (data) => {
+          if (data.node === "writer") nodeCompleted.writer = true;
+        },
+        usage: onUsageEvent,
+        interrupt: (data) => {
+          if (data.type === "blog_review") onBlogReview(data);
+        },
+      });
+    } catch (err) {
+      showError(friendlyNetworkError(err, OUTLINE_FEEDBACK_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function revealFeedbackBox() {
+    feedbackBox.style.display = "block";
+    feedbackText.focus();
+  }
+
+  async function submitRejection() {
+    const feedback = feedbackText.value.trim();
+    if (!feedback) {
+      showError("Let us know what you'd like changed so the outline can be revised.");
+      return;
+    }
+    if (!currentSessionId) return;
+
+    clearError();
+    setBusy(true, "Revising the outline based on your feedback...");
+
+    outlineStream.buffer = "";
+    nodeCompleted.planner = false;
+    outlineContent.innerHTML = "";
+    approveBtn.style.display = "none";
+    rejectBtn.style.display = "none";
+    feedbackBox.style.display = "none";
+
+    try {
+      await streamRequest(OUTLINE_FEEDBACK_URL, {
+        session_id: currentSessionId,
+        approved: false,
+        feedback: feedback,
+      }, {
+        token: (data) => {
+          if (data.node === "planner") appendToken(outlineStream, "planner", data.content);
+        },
+        node_complete: (data) => {
+          if (data.node === "planner") nodeCompleted.planner = true;
+        },
+        usage: onUsageEvent,
+        interrupt: (data) => {
+          if (data.type === "outline_review") onOutlineReview(data);
+        },
+      });
+    } catch (err) {
+      showError(friendlyNetworkError(err, OUTLINE_FEEDBACK_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveDraft() {
+    if (!currentSessionId) return;
+
+    clearError();
+    setBusy(true, "Finishing up — generating titles and hooks...");
+
+    try {
+      await streamRequest(BLOG_FEEDBACK_URL, { session_id: currentSessionId, approved: true }, {
+        usage: onUsageEvent,
+        complete: (data) => onComplete(data),
+      });
+    } catch (err) {
+      showError(friendlyNetworkError(err, BLOG_FEEDBACK_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function revealDraftFeedbackBox() {
+    draftFeedbackBox.style.display = "block";
+    draftFeedbackText.focus();
+  }
+
+  async function submitDraftRejection() {
+    const feedback = draftFeedbackText.value.trim();
+    if (!feedback) {
+      showError("Let us know what you'd like changed so the draft can be revised.");
+      return;
+    }
+    if (!currentSessionId) return;
+
+    clearError();
+    setBusy(true, "Revising the draft based on your feedback...");
+
+    draftStream.buffer = "";
+    nodeCompleted.writer = false;
+    draftContent.innerHTML = "";
+    approveDraftBtn.style.display = "none";
+    rejectDraftBtn.style.display = "none";
+    draftFeedbackBox.style.display = "none";
+
+    try {
+      await streamRequest(BLOG_FEEDBACK_URL, {
+        session_id: currentSessionId,
+        approved: false,
+        feedback: feedback,
+      }, {
+        token: (data) => {
+          if (data.node === "writer") appendToken(draftStream, "writer", data.content);
+        },
+        node_complete: (data) => {
+          if (data.node === "writer") nodeCompleted.writer = true;
+        },
+        usage: onUsageEvent,
+        interrupt: (data) => {
+          if (data.type === "blog_review") onBlogReview(data);
+        },
+      });
+    } catch (err) {
+      showError(friendlyNetworkError(err, BLOG_FEEDBACK_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderPost(blogPost, extras) {
+    blogContent.innerHTML = marked.parse(blogPost || "");
+    extrasContent.innerHTML = marked.parse(extras || "");
+
+    resultSection.style.display = "block";
+    resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(HISTORY_URL);
+      if (!response.ok) return;
+      const items = await response.json();
+      renderHistoryList(items);
+      computeAllTimeUsage(items);
+    } catch (err) {
+    }
+  }
+
+  function renderHistoryList(items) {
+    historyList.innerHTML = "";
+
+    if (!items.length) {
+      historyList.innerHTML = '<div class="history-empty">No past generations yet.</div>';
+      return;
+    }
+
+    items.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.className = "history-item" + (item.id === activeHistoryId ? " active" : "");
+      btn.innerHTML =
+        '<span class="topic">' + escapeHtml(item.topic) + "</span>" +
+        '<span class="date">' + formatDate(item.created_at) + "</span>" +
+        '<span class="usage-badge">' + formatTokens(item.total_tokens) + " tokens · " + formatCost(item.cost_usd) + "</span>";
+      btn.addEventListener("click", () => loadHistoryItem(item.id));
+      historyList.appendChild(btn);
+    });
+  }
+
+  async function loadHistoryItem(id) {
+    clearError();
+    setBusy(true, "Loading...");
+
+    try {
+      const response = await fetch(HISTORY_URL + "/" + id);
+      if (!response.ok) throw new Error("Couldn't load that generation.");
+
+      const data = await response.json();
+      activeHistoryId = id;
+      currentSessionId = null;
+      topicInput.value = data.topic;
+      resetPanels();
+      renderPost(data.blog_post, data.extras);
+      renderFinalUsage(data);
+      loadHistory();
+    } catch (err) {
+      showError(friendlyNetworkError(err, HISTORY_URL));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function formatDate(isoString) {
+    const d = new Date(isoString);
+    if (isNaN(d)) return isoString;
+    return d.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  startBtn.addEventListener("click", startOutline);
+  topicInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") startOutline();
+  });
+
+  approveBtn.addEventListener("click", approveOutline);
+  rejectBtn.addEventListener("click", revealFeedbackBox);
+  submitFeedbackBtn.addEventListener("click", submitRejection);
+
+  approveDraftBtn.addEventListener("click", approveDraft);
+  rejectDraftBtn.addEventListener("click", revealDraftFeedbackBox);
+  submitDraftFeedbackBtn.addEventListener("click", submitDraftRejection);
+
+  newBtn.addEventListener("click", () => {
+    currentSessionId = null;
+    activeHistoryId = null;
+    topicInput.value = "";
+    resetPanels();
+    clearError();
+    topicInput.focus();
+    loadHistory();
+  });
+
+  loadHistory();
+</script>
+
+</body>
+</html>
