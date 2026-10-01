@@ -106,9 +106,7 @@ frontend/
 
 The `/outline/start`, `/outline/feedback`, and `/blog/feedback` endpoints stream `text/event-stream` responses with these event types: `token` (streamed LLM output), `node_complete`, `usage`, `interrupt` (pending human review), `complete`, `end`.
 
-## Deployment
 
-Ships with a production-ready `Dockerfile` (non-root user, reads `$PORT` at runtime). Deployable as-is to any Docker-based host — Render, Fly.io, Google Cloud Run, etc. — with an external managed Postgres instance (e.g. Neon, Supabase) for `DATABASE_URL`.
 
 ## License
 
